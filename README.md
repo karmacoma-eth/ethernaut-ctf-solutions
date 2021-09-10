@@ -517,7 +517,7 @@ contract Underhanded {
 ```
 
 
-## 🙅‍♂️ Level 20 - Daniel
+## 🙅‍♂️ Level 20 - Denial
 Just burn all the gas available in the receive() function since they didn't specify a gas stipend like `call.gas(100000).value()`
 
 ```solidity
